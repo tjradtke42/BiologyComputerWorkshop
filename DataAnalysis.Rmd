@@ -107,6 +107,10 @@ head(mpg)
 
 # It is also important to check the structure of your data
 str(mpg)
+glimpse(mpg)
+
+# Also good to look at a summary of your data
+summary(mpg)
 
 # We will order our data by year and highway mpg (hwy)
 # NOTE that this does not alter the saved object, only the current display 
@@ -148,7 +152,7 @@ mpg %>%
 mpg %>% 
   filter(manufacturer == "dodge" | manufacturer == "ford")
 
-# This won't work, because a manufacuter cannot be both Dodge and Ford
+# This won't work, because a manufacturer cannot be both Dodge and Ford
 mpg %>% 
   filter(manufacturer == "dodge", manufacturer == "ford")
 
@@ -224,7 +228,7 @@ flights %>%
               hour > 8 & hour <= 18 ~ "good", 
               hour > 18 ~ "late"
             )) %>%
-  sample_n(20, replace = FALSE)
+  slice_sample(n = 20, replace = FALSE)
 ```
 
 Calculating data summary statistics is also necessary. This is easily achieved 
@@ -472,7 +476,7 @@ workflows.
 
 Questions we’ll explore:
 
-1. How does **weight** relate to **treasure haul**?
+1. How does **weight** and **month** relate to **treasure haul**?
 2. Do **males and females** differ in treasure haul?
 3. For females, how does **mean treasure haul** relate to **number of offspring**?
 
@@ -488,7 +492,7 @@ The repository contains three `.csv` files in `Data/`:
    - `sex`          — "F" or "M"
    - `age`    — age at capture (years)
    - `weight_g`     — body mass at capture (grams)
-   - `site`         — capture location (e.g., "Gringotts", "Hogsmeade", "ForbiddenForest")
+   - `site`         — capture location (e.g., "Gringotts", "Hogsmeade")
 
 2. **Treasure data**: `nifflers_treasure.csv`  
    Multiple rows per individual, one per week.
@@ -531,8 +535,7 @@ Use the code block below to work:
 Our raw data contains:
 - Inconsistent site names  
 - Missing values  
-- Outliers  
-- Years stored as characters  
+- Outliers   
 - Other issues that will break analysis  
 
 We will clean each table separately.
@@ -573,16 +576,22 @@ Use the code block below to complete each step.
 
 ## Step 2: Join tables together
 
-After cleaning, we can combine tables:
+After cleaning, we can combine tables so that we can answer our research 
+questions (1. How does **weight** and **month** relate to **treasure haul**?, 
+2. Do **males and females** or **sites** differ in treasure haul?, 3. For females,
+how does **mean treasure haul** relate to **number of offspring**?). We need 2 
+main data frames to answer our questions:
 
-1. Join capture + treasure using `id`.
-2. Then join recruitment to the yearly treasure summaries.
-3. Make sure all joins behave as expected (no duplicates, no dropped rows).
+1. A treasure data frame to answer questions 1 + 2 that includes weekly treasure
+haul, body weight at capture, sex, site, and month of treasure haul. To do this, 
+we will need to join capture + treasure data frames. 
+2. A recruitment data frame to answer question 3 that includes recruitment, 
+mean treasure haul per year per id, and year. 
 
 ### Your tasks:
 1. Create a capture–treasure joined table using `left_join()`.  
-2. Inspect how many rows each dataset has before and after joining.  
-3. Create a full dataset combining capture, treasure, and recruitment.  
+2. Inspect how many rows each data set has before and after joining.  
+3. Create a full data set combining capture, treasure, and recruitment.  
 4. Check for:
    - Duplicate IDs
    - Missing values introduced during joins
@@ -598,26 +607,26 @@ Use the scaffold code block below:
 
 
 
-# 2. Join recruitment
+# 2. Create the month variable
 
 
 
 
-# 3. Inspect results
+# 3. Create any other variables you want to evaluate (e.g., year)
 
 
 ```
 
 
-## Step 3: Derived variables and summaries
-
-Now we summarize the data to prepare for plots and analysis.
+Now we summarize the treasure data to prepare the recruitment data frame.
 
 ### Your tasks:
 1. Create a **year** variable in the treasure table using `year(date)`.  
-2. Summarize weekly treasure into **mean treasure per ID per year**.  
-3. In the full dataset, create `age_current` (age at the time of recruitment).  
-4. Create at least two summary tables you think might be useful—for example:
+2. Summarize weekly treasure into **mean treasure per ID per year** and 
+**total treasure per ID per year**.  
+3. Join to the recruitment and capture data frame
+4. In the full data set, create `age_current` (age at the time of recruitment).  
+5. Create at least two summary tables you think might be useful—for example:
    - Mean treasure by site  
    - Number of offspring per year  
    - Mean weight by sex  
@@ -631,6 +640,11 @@ Use the code block below.
 
 
 
+# Join all the tables
+
+
+
+
 # Create age_current
 
 
@@ -640,3 +654,452 @@ Use the code block below.
 
 
 ```
+
+
+## Step 3: Exploratory Data Analysis
+
+Now that our data are clean, joined, and structured, we can begin exploring our 
+study questions visually.
+
+Before fitting any models, ecologists almost always:
+- Plot relationships
+- Look for patterns and variation
+- Identify remaining outliers or anomalies
+- Decide what analyses are appropriate
+
+We will use ggplot2, which is built on the grammar of graphics, the idea that any 
+plot can be built from the same set of components: a data set, mapping aesthetics, 
+and graphical layers:
+
+- Data sets are the data that you, the user, provide.
+
+- Mapping aesthetics are what connect the data to the graphics. They tell ggplot2
+how to use your data to affect how the graph looks, such as changing what is 
+plotted on the X or Y axis, or the size or color of different data points.
+
+- Layers are the actual graphical output from ggplot2. Layers determine what kinds 
+of plot are shown (scatter plot, histogram, etc.), the coordinate system used
+(rectangular, polar, others), and other important aspects of the plot. The idea 
+of layers of graphics may be familiar to you if you have used image editing 
+programs like Photoshop, Illustrator, or Inkscape.
+
+We’ll work through this step-by-step so you can see how each layer adds
+information, starting with our treasure data.
+
+```{r ploting1}
+# Specify the data argument
+ggplot(data = treasure_datum)
+
+# Here we called ggplot and told it what data we want to show on our figure. 
+# This is not enough information for ggplot to actually draw anything. It only 
+# creates a blank slate for other elements to be added to.
+# 
+# Now we’re going to add in the mapping aesthetics using the aes function. aes 
+# tells ggplot how variables in the data map to aesthetic properties of the figure, 
+# such as which columns of the data should be used for the x and y locations.
+ggplot(data = treasure_datum, mapping = aes(x = weight_g, y = treasure_g))
+
+
+# Now we’ve got a plot with x and y axes corresponding to variables from our 
+# treasure data. However, we haven’t specified how we want the data to be 
+# displayed. We do this using geom_ functions, which specify the type of geometry 
+# we want, such as points, lines, or bars. We can add a geom_point() layer to our
+# plot by using the + sign.
+ggplot(data = treasure_datum, mapping = aes(x = weight_g, y = treasure_g)) + 
+  geom_point()
+
+
+```
+
+What do we see with this basic scatter plot? What does each point represent? Do 
+you see a trend? Is the relationship tight or noisy? Anything stick out as unusual? 
+
+Now we are going to add biological context with color. Sex may influence body 
+size and treasure collecting ability, so lets add that to the plot. 
+
+```{r plotting2}
+# Add biological meaning by adding sex
+ggplot(treasure_datum, aes(x = weight_g, y = treasure_g, color = sex)) + 
+  geom_point()
+
+# Treasure may vary seasonally, lets add month as a facet, which splits the same
+# relationship across subsets of data
+ggplot(treasure_datum, aes(x = weight_g, y = treasure_g, color = sex)) + 
+  geom_point() +
+  facet_wrap(~ month)
+
+# Now add a summary layer to the plot
+ggplot(treasure_datum, aes(x = weight_g, y = treasure_g, color = sex)) + 
+  geom_point(alpha = 0.2) +
+  facet_wrap(~ month) + 
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+
+Here, you might start to wonder what is going on with that super, unbelievably 
+large (and small) female nifflers. Seems like an outlier (or error). We can 
+visualize the data without the outliers as well. 
+
+```{r plotting3}
+# Here I will alter the data and then pipe into ggplot
+treasure_datum %>% 
+  filter(weight_g <= 1800, weight_g >= 100) %>%
+  ggplot(aes(x = weight_g, y = treasure_g, color = sex)) + 
+  geom_point(alpha = 0.2) +
+  facet_wrap(~ month) + 
+  geom_smooth(method = "lm", se = FALSE)
+
+```
+
+Rather than focusing on individual points, we can look at group-level differences
+with box plots. Box plots are great for data summaries, but DO NOT represent a 
+model unless accompanied with statistics. 
+
+```{r plotting4}
+# Just sex
+ggplot(treasure_datum, aes(x = sex, y = treasure_g)) + 
+  geom_boxplot()
+
+# Lets look at sites
+ggplot(treasure_datum, aes(x = sex, y = treasure_g)) + 
+  geom_boxplot() + 
+  facet_wrap( ~ site)
+
+```
+
+Lets revisit our scatter plot, and work on creating more beautiful plots and 
+visualizing techniques. 
+
+```{r plotting5}
+
+# Create our base plot to work from 
+ggplot(treasure_datum, aes(x = weight_g, y = treasure_g, color = sex)) + 
+  geom_point()
+
+# Visualize site with this data set, and save object to use as base
+p <- ggplot(treasure_datum, aes(x = weight_g, y = treasure_g, color = sex)) + 
+  geom_point(alpha = 0.2) +
+  facet_wrap(~ site)
+
+# The first step to creating visually pleasing graphs is changing the theme. 
+# ggplot has a lot of built in themes, pick one you like and use it
+p + theme_classic()
+p + theme_dark()
+p + theme_light()
+p + theme_minimal()
+
+
+# Next thing is properly labeling axes because variable names often don't look
+# great in publication. Are axes are scales, so we can manipulate with scales
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000))
+
+# Next thing is the color. Most plots are not colorblind friendly. Can change
+# this with scales by manually setting colors or using presets
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000)) + 
+  scale_color_manual(values = c("purple", "orange"))
+
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000)) + 
+  scale_color_viridis_d()
+
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000)) + 
+  scale_color_brewer(palette = "Dark2")
+
+# Last thing to change is the legend, it is not very clear and in a weird spot. 
+# We will change the names and labels with scale, and change the appearnace with 
+# theme
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000)) + 
+  scale_color_brewer(name = "", labels = c("Female", "Male"), palette = "Dark2") + 
+  theme(legend.position = "top")
+
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000)) + 
+  scale_color_brewer(name = "", labels = c("Female", "Male"), palette = "Dark2") + 
+  theme(legend.position = c(0.93, 0.1))
+
+# Okay, truly last, the text is small. We can use theme, and whenever we deal 
+# with text, we use element_text
+p + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Weekly treasure haul (g)", 
+                     breaks = seq(0, 20000, 2000), limits = c(0, 12000)) + 
+  scale_color_brewer(name = "", labels = c("Female", "Male"), palette = "Dark2") + 
+  theme(legend.position = "top", 
+        axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        strip.text = element_text(size = 16), 
+        legend.text = element_text(size = 12))
+
+```
+
+Now that we have discussed visualizing data and how to use ggplot, I want you to 
+create a plot that visualizes the recruitment data and what factors might affect
+niffler recruitment. Ultimately, I want you to take away that: 
+- Visualization is part of analysis, not decoration
+- Each plot reflects a specific biological question
+- Clean, well-structured data make plotting straightforward
+- ggplot layers build complexity incrementally and transparently
+
+### Your tasks:
+1. Decide what should go on the x- and y-axes
+2. Decide whether color, fill, or facets add useful information
+3. Choose an appropriate geometry (geom_point(), geom_boxplot(), etc.)
+
+```{r plotting6}
+# Create a solid plot visualizing the recruitment data
+
+
+```
+
+
+## Step 3: From Visualization to Models
+
+Exploratory plots help us see patterns.
+Models help us quantify them.
+
+We will now fit simple statistical models to formally evaluate the questions
+we’ve already explored visually.
+
+### Questions 1 + 2 - What predicts treasure haul? 
+
+We think that weight, sex, month, and site might influence treasure haul. There 
+are multiple valid ways to build a model to address our questions 
+(*what explains variation in weekly treasure haul?*). The approach depends on
+the goal of the analysis.
+
+Option 1: Candidate model approach (model comparison)
+Under this framework, we specify a small set of biologically motivated models 
+and compare them using an information-theoretic criterion (e.g., AIC).
+- Treasure ~ weight
+- Treasure ~ weight + sex
+- Treasure ~ weight + sex + month
+- Treasure ~ sex + month
+This approach is useful when the primary goal is hypothesis comparison and 
+model selection.
+
+Option 2: Global model approach (parameter interpretation)
+Alternatively, we can fit a single model that includes all predictors we believe
+influence treasure haul and focus on interpreting parameter estimates.
+- Direction of effects
+- Magnitude of relationships
+- Uncertainty around estimates
+This approach is useful when the goal is understanding how predictors relate to
+the response simultaneously.
+
+For simplicity, we use the **global model approach**. This allows us to focus on
+interpretation and biological reasoning while keeping the modeling framework
+accessible. In applied ecological research, both approaches are valid when used appropriately.
+
+```{r modeling1}
+# Normally we like to look for correlations before running models
+cor(treasure_datum %>%
+      mutate(site = as.numeric(as.factor(site)), 
+             sex = as.numeric(sex)) %>%
+      select(-id, -date, -treasure_g), use = "complete.obs")
+
+# A great package for looking at correlation is PerformanceAnalytics
+PerformanceAnalytics::chart.Correlation(treasure_datum %>%
+      mutate(site = as.numeric(as.factor(site)), 
+             sex = as.numeric(sex)) %>%
+      select(-id, -date, -treasure_g))
+
+
+# Run a global model using lm() function
+tres_results <- lm(treasure_g ~ weight_g + sex + as.factor(month) + site, 
+                   data = treasure_datum)
+
+# Look at results
+summary(tres_results)
+
+# Lets make a table that we can save of our beta estiamtes
+(beta_coefs <- as.data.frame(
+  summary(tres_results)$coefficients) %>%
+  rownames_to_column("Parameter"))
+
+```
+ 
+Now, this workshop is not focused on statistics, so we won’t spend much time on 
+formal model interpretation. However, there are a few important concepts I want
+to highlight.
+
+First, for categorical variables, you will notice that one level of each 
+variable appears to be “missing” from the output. This is because that category 
+is absorbed into the intercept. The intercept represents the average weekly 
+treasure haul for the reference group — in this case, female nifflers, weighing 
+0 g, during January, in Diagon Alley.
+
+The coefficient for sexM represents the difference in treasure haul between 
+males and females, holding all other variables constant. In other words, it 
+tells us how much the expected treasure haul changes when we move from a female 
+to a male niffler.
+
+For continuous variables, interpretation is more straightforward. The coefficient 
+for weight_g represents the expected change in weekly treasure haul for each 
+additional gram of body weight, assuming all other variables remain the same.
+
+Rather than spending more time on numerical output, we will now visualize the 
+predicted relationship between sex, body weight, and study site on weekly 
+treasure haul.
+
+```{r prediction}
+# We will use expand_grid to help us create a prediction data frame
+pred_datum <- expand_grid(
+  site = unique(treasure_datum$site), 
+  sex = c("F", "M"), 
+  month = 4, 
+  weight_g = seq(0, 1000, 1))
+
+# Now we will use the predict function to generate predicted weekly treasure 
+# haul
+preds <- as.data.frame(predict(tres_results, newdata = pred_datum, se.fit = TRUE))
+
+# Now join and plot
+preds %>%
+  bind_cols(pred_datum) %>%
+  ggplot(aes(x = weight_g, y = fit, color = sex)) + 
+  geom_line() + 
+  geom_ribbon(aes(x = weight_g, ymin = fit - 1.96 * se.fit, 
+                  ymax = fit + 1.96 * se.fit, fill = sex), 
+              alpha = 0.3, color = NA) + 
+  facet_wrap(~ site) + 
+  coord_cartesian(ylim = c(0, 1100)) + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Predicted weekly treasure haul (g)", 
+                     breaks = seq(0, 2000, 100), limits = c(0, 12000)) + 
+  scale_color_brewer(name = "", labels = c("Female", "Male"), palette = "Dark2") +
+  scale_fill_brewer(name = "", labels = c("Female", "Male"), palette = "Dark2") + 
+  theme(legend.position = "top", 
+        axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        strip.text = element_text(size = 16), 
+        legend.text = element_text(size = 12))
+
+# Or with sex faceted and sites to colors
+preds %>%
+  bind_cols(pred_datum) %>%
+  ggplot(aes(x = weight_g, y = fit, color = site)) + 
+  geom_line() + 
+  geom_ribbon(aes(x = weight_g, ymin = fit - 1.96 * se.fit, 
+                  ymax = fit + 1.96 * se.fit, fill = site), 
+              alpha = 0.3, color = NA) + 
+  facet_wrap(~ sex) + 
+  coord_cartesian(ylim = c(0, 1100)) + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Predicted weekly treasure haul (g)", 
+                     breaks = seq(0, 2000, 100), limits = c(0, 12000)) + 
+  scale_color_brewer(name = "", palette = "Dark2") +
+  scale_fill_brewer(name = "", palette = "Dark2") + 
+  theme(legend.position = "top", 
+        axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        strip.text = element_text(size = 16), 
+        legend.text = element_text(size = 12))
+
+# Maybe add in observed data
+preds %>%
+  bind_cols(pred_datum) %>%
+  ggplot(aes(x = weight_g, y = fit, color = site)) + 
+  geom_point(data = treasure_datum, 
+             aes(x = weight_g, y = treasure_g, color = site), 
+             alpha = 0.15) + 
+  geom_line() + 
+  geom_ribbon(aes(x = weight_g, ymin = fit - 1.96 * se.fit, 
+                  ymax = fit + 1.96 * se.fit, fill = site), 
+              alpha = 0.3, color = NA) + 
+  facet_wrap(~ sex) + 
+  theme_classic() +
+  scale_x_continuous(name = "Body size (g)", breaks = seq(0, 2500, 250)) + 
+  scale_y_continuous(name = "Predicted weekly treasure haul (g)") + 
+  scale_color_brewer(name = "", palette = "Dark2") +
+  scale_fill_brewer(name = "", palette = "Dark2") + 
+  theme(legend.position = "top", 
+        axis.title = element_text(size = 14), 
+        axis.text = element_text(size = 12), 
+        strip.text = element_text(size = 16), 
+        legend.text = element_text(size = 12))
+
+```
+
+We can see that our fitted line does not do a great job of capturing the observed
+pattern, and if we look back at the model output, the fit is not very strong
+either (R² ≈ 0.22). That tells us we are missing something important and/or
+our results are being distorted by a few influential points. 
+
+From the plots of our observed and predicted values, what stands out to you?
+
+**Hint:** there are clear outliers, and we have not yet accounted for **current
+age** (age at the time of each treasure observation, not just age at capture).
+The data were simulated with a quadratic effect of age on treasure ability.
+
+Below, we:
+1. Remove the most extreme outliers  
+2. Calculate current age  
+3. Add a quadratic age term to the model  
+4. Drop `month`, which did not help explain treasure haul  
+and refit the model.
+
+```{r}
+
+# Fix data and calculate new variable
+mod_treasdat <- treasure_datum %>%
+  filter(weight_g < 1700, weight_g > 100) %>%
+  mutate(current_age = age + (year - capture_year))
+
+# Fit model and look at output
+m2 <- lm(treasure_g ~ site + sex + current_age+ I(current_age^2) + weight_g, 
+         data = mod_treasdat)
+summary(m2)
+
+```
+
+The model fits better, but it is still far from “perfect.” That’s expected: even 
+in a simulated system, there is year-to-year variation and individual-level 
+noise that we are not fully capturing. In the data-generation script, I also 
+included random year effects, so a more complete analysis would use a 
+mixed-effects model with year (and possibly individual ID) as a random effect. 
+That is beyond the scope of today’s workshop, but you can try it later if you 
+want a challenge.
+
+To keep us on time, we will stop here with the treasure model. If we have any
+minutes left, I’d like you to start exploring the recruitment data using the 
+same workflow:
+- build a model that predicts recruitment from female condition (e.g., mean 
+treasure haul) and age,
+- and then visualize the predicted relationships with a clear, publication-quality plot.
+
+As you work on your own data after this workshop, this is the pattern I want you 
+to remember:
+1. Import and clean your data.
+2. Join and transform tables into the structure you need.
+3. Explore visually with ggplot before fitting models.
+4. Fit simple, transparent models that match your biological questions.
+5. Visualize model predictions in ways that connect back to the biology.
+
+If you can follow that workflow from raw .csv files to interpretable plots and 
+models, you have the core skills you need to manage and analyze ecological 
+data in R.

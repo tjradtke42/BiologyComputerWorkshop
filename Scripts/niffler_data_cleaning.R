@@ -167,11 +167,11 @@ nrow(capture)
 nrow(treasure)
 
 # Join on id
-cap_treasure <- treasure %>%
+treasure_datum <- treasure %>%
   left_join(
-    capture %>% select(id, sex, age, weight_g, site, capture_year),
-    by = "id"
-  )
+    capture %>% select(id, sex, age, weight_g, site, capture_year)) %>%
+  mutate(month = month(date), 
+         year = year(date))
 
 glimpse(cap_treasure)
 
@@ -224,3 +224,4 @@ glimpse(recruitment_datum)
 
 # Clean up workspace
 rm(dup_ids, capture_raw, recruitment_raw, treasure_raw)
+
